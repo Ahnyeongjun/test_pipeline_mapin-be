@@ -1,27 +1,25 @@
 package com.mapin.recommendation.event;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.job.Job;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.job.parameters.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
-/**
- * recommendationJob 실행을 공통으로 처리하는 헬퍼.
- * ContentAnalyzedEventHandler / ContentEmbeddedEventHandler 가 함께 사용한다.
- */
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class RecommendationTrigger {
 
     private final JobLauncher jobLauncher;
-
-    @Qualifier("recommendationJob")
     private final Job recommendationJob;
+
+    public RecommendationTrigger(JobLauncher jobLauncher,
+            @Qualifier("recommendationJob") Job recommendationJob) {
+        this.jobLauncher = jobLauncher;
+        this.recommendationJob = recommendationJob;
+    }
 
     public void trigger(Long contentId) {
         try {
