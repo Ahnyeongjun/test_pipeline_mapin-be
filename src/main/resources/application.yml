@@ -3,6 +3,11 @@ spring:
     import: optional:file:.env[.properties]
   application:
     name: mapin-pipeline
+  batch:
+    jdbc:
+      initialize-schema: always
+    job:
+      enabled: false
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/mapin}
     username: ${SPRING_DATASOURCE_USERNAME:mapin}
