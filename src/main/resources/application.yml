@@ -1,0 +1,44 @@
+spring:
+  config:
+    import: optional:file:.env[.properties]
+  application:
+    name: mapin-pipeline
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/mapin}
+    username: ${SPRING_DATASOURCE_USERNAME:mapin}
+    password: ${SPRING_DATASOURCE_PASSWORD:mapin}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER:org.postgresql.Driver}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+  sql:
+    init:
+      mode: never
+
+openai:
+  api-key: ${OPENAI_API_KEY:}
+  model: ${OPENAI_MODEL:gpt-4.1}
+  embedding-model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
+
+youtube:
+  api:
+    key: ${YOUTUBE_API_KEY:}
+
+qdrant:
+  host: ${QDRANT_HOST:localhost}
+  port: ${QDRANT_PORT:6333}
+  collection-name: ${QDRANT_COLLECTION_NAME:mapin_contents}
+  vector-size: ${QDRANT_VECTOR_SIZE:1536}
+  distance: ${QDRANT_DISTANCE:Cosine}
+
+pipeline:
+  recommendation:
+    strategy: ${PIPELINE_RECOMMENDATION_STRATEGY:db}  # 'db' or 'vector'
+
+logging:
+  level:
+    com.mapin.content.application: DEBUG
