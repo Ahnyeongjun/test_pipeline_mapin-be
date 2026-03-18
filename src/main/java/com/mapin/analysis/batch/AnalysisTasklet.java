@@ -35,7 +35,7 @@ public class AnalysisTasklet implements Tasklet {
                 nullSafe(content.getTitle()), nullSafe(content.getDescription()));
 
         PerspectiveAnalysisResult result = perspectiveClassifier.classify(text);
-        content.updatePerspective(result.category(), result.perspectiveLevel(), result.perspectiveStakeholder());
+        content.updatePerspective(result.category(), result.perspectiveLevel(), result.perspectiveStakeholder(), result.keywords());
         contentRepository.save(content);
 
         log.info("[Analysis] contentId={} category={} level={} stakeholder={} source={}",

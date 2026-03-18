@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.step.StepContribution;
 import org.springframework.batch.core.scope.context.ChunkContext;
@@ -174,12 +175,26 @@ public class RecommendationTasklet implements Tasklet {
     }
 
     private void tryFallbackSearch(Content content) {
-        if (content.getCategory() == null) return;
+        String query = buildFallbackQuery(content);
+        if (query == null) return;
         try {
-            List<String> videoIds = youtubeSearchClient.searchVideoIds(content.getCategory(), 10);
-            log.info("[Recommendation] fallback 검색 결과 category={} count={}", content.getCategory(), videoIds.size());
+            List<String> videoIds = youtubeSearchClient.searchVideoIds(query, 10);
+            log.info("[Recommendation] fallback 검색 결과 query='{}' count={}", query, videoIds.size());
         } catch (Exception e) {
             log.warn("[Recommendation] fallback 검색 실패: {}", e.getMessage());
         }
+    }
+
+    /**
+     * GPT가 추출한 keywords로 YouTube 검색 쿼리 생성.
+     * keywords 없으면 category로 fallback.
+     * ex) ["금리", "한국은행", "통화정책"] → "금리 한국은행 통화정책"
+     */
+    private String buildFallbackQuery(Content content) {
+        List<String> keywords = content.getKeywords();
+        if (keywords != null && !keywords.isEmpty()) {
+            return keywords.stream().limit(5).collect(Collectors.joining(" "));
+        }
+        return content.getCategory();
     }
 }

@@ -2,6 +2,7 @@ package com.mapin.analysis.client;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import java.util.List;
 import com.openai.client.OpenAIClient;
 import com.openai.core.JsonSchemaLocalValidation;
 import com.openai.models.ChatModel;
@@ -38,7 +39,7 @@ public class GptPerspectiveClassifier implements PerspectiveClassifier {
                 .flatMap(c -> c.message().content())
                 .orElseThrow(() -> new IllegalStateException("GPT 분류 결과가 비어 있습니다."));
 
-        return new PerspectiveAnalysisResult(schema.category, schema.perspectiveLevel, schema.perspectiveStakeholder);
+        return new PerspectiveAnalysisResult(schema.category, schema.perspectiveLevel, schema.perspectiveStakeholder, schema.keywords);
     }
 
     private String systemPrompt() {
@@ -48,6 +49,7 @@ public class GptPerspectiveClassifier implements PerspectiveClassifier {
                 category: 정치, 경제, 사회, 생활/문화, IT/과학, 세계, 연예, 스포츠 중 하나
                 perspectiveLevel: 사건(무슨 일), 원인(왜 발생), 구조(시스템 문제) 중 하나
                 perspectiveStakeholder: 정부, 전문가, 시민, 기업, 국제 중 하나
+                keywords: 콘텐츠 핵심 주제를 대표하는 명사 3~5개 (유튜브 검색에 쓸 수 있도록 구체적으로)
                 """;
     }
 
@@ -68,5 +70,7 @@ public class GptPerspectiveClassifier implements PerspectiveClassifier {
         public String perspectiveLevel;
         @JsonPropertyDescription("정부, 전문가, 시민, 기업, 국제 중 하나")
         public String perspectiveStakeholder;
+        @JsonPropertyDescription("콘텐츠 핵심 주제를 대표하는 명사 3~5개 (유튜브 검색에 쓸 수 있도록 구체적으로)")
+        public List<String> keywords;
     }
 }

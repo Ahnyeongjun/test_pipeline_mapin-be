@@ -11,10 +11,13 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.OffsetDateTime;
+import java.util.List;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "contents", uniqueConstraints = {
@@ -79,6 +82,10 @@ public class Content {
     @Column(name = "perspective_stakeholder", length = 30)
     private String perspectiveStakeholder;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "keywords", columnDefinition = "jsonb")
+    private List<String> keywords;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -130,9 +137,10 @@ public class Content {
         this.vectorId = vectorId;
     }
 
-    public void updatePerspective(String category, String perspectiveLevel, String perspectiveStakeholder) {
+    public void updatePerspective(String category, String perspectiveLevel, String perspectiveStakeholder, List<String> keywords) {
         this.category = category;
         this.perspectiveLevel = perspectiveLevel;
         this.perspectiveStakeholder = perspectiveStakeholder;
+        this.keywords = keywords;
     }
 }
