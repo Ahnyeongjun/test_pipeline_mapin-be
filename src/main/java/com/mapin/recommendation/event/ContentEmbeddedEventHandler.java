@@ -1,6 +1,6 @@
 package com.mapin.recommendation.event;
 
-import com.mapin.analysis.event.ContentAnalyzedEvent;
+import com.mapin.embedding.event.ContentEmbeddedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.parameters.JobParameters;
@@ -14,19 +14,18 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * db 전략: 분류 완료 → 즉시 recommendation 실행 (USER/FALLBACK 모두)
- * vector 전략일 때는 ContentEmbeddedEventHandler가 대신 처리
+ * vector 전략: 임베딩 완료 → 즉시 recommendation 실행 (USER/FALLBACK 모두)
  * source는 JobParameters로 전달되어 RecommendationTasklet에서 분기 처리
  */
 @Component
-@ConditionalOnProperty(name = "pipeline.recommendation.strategy", havingValue = "db", matchIfMissing = true)
+@ConditionalOnProperty(name = "pipeline.recommendation.strategy", havingValue = "vector")
 @Slf4j
-public class ContentAnalyzedEventHandler {
+public class ContentEmbeddedEventHandler {
 
     private final JobLauncher jobLauncher;
     private final Job recommendationJob;
 
-    public ContentAnalyzedEventHandler(JobLauncher jobLauncher,
+    public ContentEmbeddedEventHandler(JobLauncher jobLauncher,
             @Qualifier("recommendationJob") Job recommendationJob) {
         this.jobLauncher = jobLauncher;
         this.recommendationJob = recommendationJob;
@@ -34,9 +33,9 @@ public class ContentAnalyzedEventHandler {
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void handle(ContentAnalyzedEvent event) throws Exception {
+    public void handle(ContentEmbeddedEvent event) throws Exception {
         Long contentId = event.getContentId();
-        log.info("[RecommendationHandler] ContentAnalyzedEvent 수신 contentId={} source={}", contentId, event.getSource());
+        log.info("[RecommendationHandler] ContentEmbeddedEvent 수신 contentId={} source={}", contentId, event.getSource());
 
         JobParameters params = new JobParametersBuilder()
                 .addLong("contentId", contentId)
