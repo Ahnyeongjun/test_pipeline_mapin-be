@@ -18,7 +18,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * vector 전략일 때는 ContentEmbeddedEventHandler가 대신 처리
  * source는 JobParameters로 전달되어 RecommendationTasklet에서 분기 처리
  */
-@Component
+@Component("recommendationContentAnalyzedEventHandler")
 @ConditionalOnProperty(name = "pipeline.recommendation.strategy", havingValue = "db", matchIfMissing = true)
 @Slf4j
 public class ContentAnalyzedEventHandler {
