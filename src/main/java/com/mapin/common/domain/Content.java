@@ -85,11 +85,19 @@ public class Content {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    /**
+     * 콘텐츠 유입 경로.
+     * USER: 사용자가 직접 ingest한 콘텐츠 (추천 source가 됨)
+     * FALLBACK: 추천 후보 부족 시 YouTube 검색으로 자동 수집된 콘텐츠 (추천 pool 역할만)
+     */
+    @Column(name = "source", nullable = false, length = 20)
+    private String source;
+
     @Builder
     public Content(String canonicalUrl, String platform, String externalContentId,
             String title, String description, String thumbnailUrl, String channelTitle,
             OffsetDateTime publishedAt, String youtubeCategoryId, String duration,
-            Long viewCount, String status) {
+            Long viewCount, String status, String source) {
         this.canonicalUrl = canonicalUrl;
         this.platform = platform;
         this.externalContentId = externalContentId;
@@ -102,6 +110,7 @@ public class Content {
         this.duration = duration;
         this.viewCount = viewCount;
         this.status = status;
+        this.source = source;
     }
 
     @PrePersist

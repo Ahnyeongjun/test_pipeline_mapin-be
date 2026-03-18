@@ -26,6 +26,7 @@ public class AnalysisTasklet implements Tasklet {
     @Override
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) {
         Long contentId = contribution.getStepExecution().getJobParameters().getLong("contentId");
+        String source = contribution.getStepExecution().getJobParameters().getString("source", "USER");
 
         Content content = contentRepository.findById(contentId)
                 .orElseThrow(() -> new IllegalArgumentException("콘텐츠를 찾을 수 없습니다. id=" + contentId));
@@ -37,10 +38,10 @@ public class AnalysisTasklet implements Tasklet {
         content.updatePerspective(result.category(), result.perspectiveLevel(), result.perspectiveStakeholder());
         contentRepository.save(content);
 
-        log.info("[Analysis] contentId={} category={} level={} stakeholder={}",
-                contentId, result.category(), result.perspectiveLevel(), result.perspectiveStakeholder());
+        log.info("[Analysis] contentId={} category={} level={} stakeholder={} source={}",
+                contentId, result.category(), result.perspectiveLevel(), result.perspectiveStakeholder(), source);
 
-        eventPublisher.publishEvent(new ContentAnalyzedEvent(this, contentId));
+        eventPublisher.publishEvent(new ContentAnalyzedEvent(this, contentId, source));
         return RepeatStatus.FINISHED;
     }
 

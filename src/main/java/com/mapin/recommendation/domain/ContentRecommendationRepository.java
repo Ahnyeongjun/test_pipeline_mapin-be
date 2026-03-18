@@ -5,7 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ContentRecommendationRepository extends JpaRepository<ContentRecommendation, Long> {
 
-    List<ContentRecommendation> findBySourceContentId(Long sourceContentId);
+    List<ContentRecommendation> findBySourceContentIdOrderByScoreDesc(Long sourceContentId);
 
-    void deleteBySourceContentId(Long sourceContentId);
+    boolean existsBySourceContentIdAndTargetContentId(Long sourceContentId, Long targetContentId);
 }

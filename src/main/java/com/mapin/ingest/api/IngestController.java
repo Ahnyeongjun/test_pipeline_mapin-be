@@ -28,6 +28,7 @@ public class IngestController {
     public ResponseEntity<Void> ingest(@RequestBody IngestRequest request) throws Exception {
         JobParameters params = new JobParametersBuilder()
                 .addString("url", request.url())
+                .addString("source", "USER")
                 .addLong("run.id", System.currentTimeMillis())
                 .toJobParameters();
 

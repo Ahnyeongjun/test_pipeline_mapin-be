@@ -6,11 +6,8 @@ import java.util.List;
 public interface RecommendationStrategy {
 
     /**
-     * 주어진 콘텐츠에 대해 반대 관점 콘텐츠 후보를 반환한다.
-     *
-     * @param content 기준 콘텐츠
-     * @param limit   최대 반환 개수
-     * @return 추천 후보 목록 (빈 리스트 가능)
+     * 주어진 콘텐츠와 관계를 맺을 후보 목록을 반환한다.
+     * score 계산 및 필터링은 호출자(RecommendationTasklet)에서 수행한다.
      */
-    List<Content> recommend(Content content, int limit);
+    List<Content> getCandidates(Content content);
 }

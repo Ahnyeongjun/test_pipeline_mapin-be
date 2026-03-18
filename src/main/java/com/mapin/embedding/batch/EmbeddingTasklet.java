@@ -28,6 +28,7 @@ public class EmbeddingTasklet implements Tasklet {
     @Override
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) {
         Long contentId = contribution.getStepExecution().getJobParameters().getLong("contentId");
+        String source = contribution.getStepExecution().getJobParameters().getString("source", "USER");
 
         Content content = contentRepository.findById(contentId)
                 .orElseThrow(() -> new IllegalArgumentException("콘텐츠를 찾을 수 없습니다. id=" + contentId));
@@ -46,7 +47,7 @@ public class EmbeddingTasklet implements Tasklet {
         log.info("[Embedding] contentId={} model={} dim={}",
                 contentId, embeddingClient.modelName(), vector.size());
 
-        eventPublisher.publishEvent(new ContentEmbeddedEvent(this, contentId));
+        eventPublisher.publishEvent(new ContentEmbeddedEvent(this, contentId, source));
         return RepeatStatus.FINISHED;
     }
 

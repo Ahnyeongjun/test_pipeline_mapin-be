@@ -1,4 +1,4 @@
-package com.mapin.embedding.event;
+package com.mapin.recommendation.event;
 
 import com.mapin.analysis.event.ContentAnalyzedEvent;
 import lombok.extern.slf4j.Slf4j;
@@ -12,24 +12,28 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+/**
+ * db 전략: 분류 완료 → 즉시 recommendation 실행 (USER/FALLBACK 모두)
+ * source는 JobParameters로 전달되어 RecommendationTasklet에서 분기 처리
+ */
 @Component
 @Slf4j
 public class ContentAnalyzedEventHandler {
 
     private final JobLauncher jobLauncher;
-    private final Job embeddingJob;
+    private final Job recommendationJob;
 
     public ContentAnalyzedEventHandler(JobLauncher jobLauncher,
-            @Qualifier("embeddingJob") Job embeddingJob) {
+            @Qualifier("recommendationJob") Job recommendationJob) {
         this.jobLauncher = jobLauncher;
-        this.embeddingJob = embeddingJob;
+        this.recommendationJob = recommendationJob;
     }
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handle(ContentAnalyzedEvent event) throws Exception {
         Long contentId = event.getContentId();
-        log.info("[EmbeddingHandler] ContentAnalyzedEvent 수신 contentId={} source={}", contentId, event.getSource());
+        log.info("[RecommendationHandler] ContentAnalyzedEvent 수신 contentId={} source={}", contentId, event.getSource());
 
         JobParameters params = new JobParametersBuilder()
                 .addLong("contentId", contentId)
@@ -37,6 +41,6 @@ public class ContentAnalyzedEventHandler {
                 .addLong("run.id", System.currentTimeMillis())
                 .toJobParameters();
 
-        jobLauncher.run(embeddingJob, params);
+        jobLauncher.run(recommendationJob, params);
     }
 }

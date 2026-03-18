@@ -10,6 +10,9 @@ public interface ContentRepository extends JpaRepository<Content, Long> {
 
     List<Content> findAllByVectorIdIn(List<String> vectorIds);
 
-    List<Content> findByCategoryAndPerspectiveStakeholderNotAndIdNot(
-            String category, String perspectiveStakeholder, Long excludeId);
+    // 같은 카테고리의 자신 제외 전체 (score 계산용)
+    List<Content> findByCategoryAndIdNot(String category, Long excludeId);
+
+    // FALLBACK 처리: 같은 카테고리의 USER 콘텐츠만
+    List<Content> findByCategoryAndSourceAndIdNot(String category, String source, Long excludeId);
 }

@@ -27,10 +27,11 @@ public class ContentIngestedEventHandler {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handle(ContentIngestedEvent event) throws Exception {
         Long contentId = event.getContentId();
-        log.info("[Analysis] ContentIngestedEvent received. contentId={}", contentId);
+        log.info("[Analysis] ContentIngestedEvent received. contentId={} source={}", contentId, event.getSource());
 
         JobParameters params = new JobParametersBuilder()
                 .addLong("contentId", contentId)
+                .addString("source", event.getSource())
                 .addLong("run.id", System.currentTimeMillis())
                 .toJobParameters();
 

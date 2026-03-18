@@ -27,21 +27,21 @@ public class IngestTasklet implements Tasklet {
 
     @Override
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) {
-        String url = (String) chunkContext.getStepContext()
-                .getJobParameters().get("url");
+        String url = (String) chunkContext.getStepContext().getJobParameters().get("url");
+        String source = (String) chunkContext.getStepContext().getJobParameters().getOrDefault("source", "USER");
 
         String videoId = youtubeUrlParser.extractVideoId(url);
         String canonicalUrl = youtubeUrlParser.canonicalize(videoId);
 
         Content content = contentRepository.findByCanonicalUrl(canonicalUrl)
-                .orElseGet(() -> saveNew(videoId, canonicalUrl));
+                .orElseGet(() -> saveNew(videoId, canonicalUrl, source));
 
-        log.info("[Ingest] contentId={} url={}", content.getId(), canonicalUrl);
-        eventPublisher.publishEvent(new ContentIngestedEvent(this, content.getId()));
+        log.info("[Ingest] contentId={} url={} source={}", content.getId(), canonicalUrl, source);
+        eventPublisher.publishEvent(new ContentIngestedEvent(this, content.getId(), source));
         return RepeatStatus.FINISHED;
     }
 
-    private Content saveNew(String videoId, String canonicalUrl) {
+    private Content saveNew(String videoId, String canonicalUrl, String source) {
         YoutubeVideoMetadata meta = youtubeMetadataClient.fetch(videoId);
         return contentRepository.save(Content.builder()
                 .canonicalUrl(canonicalUrl)
@@ -56,6 +56,7 @@ public class IngestTasklet implements Tasklet {
                 .duration(meta.duration())
                 .viewCount(meta.viewCount())
                 .status("ACTIVE")
+                .source(source)
                 .build());
     }
 }

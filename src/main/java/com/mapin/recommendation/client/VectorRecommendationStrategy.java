@@ -12,8 +12,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * 벡터 기반 추천: 같은 주제 후보를 벡터 유사도로 좁힌 뒤
- * perspectiveStakeholder 가 다른 콘텐츠를 반환.
+ * 벡터 기반 추천: 벡터 유사도로 같은 주제 후보를 좁혀 반환.
+ * score 계산 및 필터링은 RecommendationTasklet에서 수행.
  */
 @Component("vectorRecommendation")
 @ConditionalOnProperty(name = "pipeline.recommendation.strategy", havingValue = "vector")
@@ -21,19 +21,14 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class VectorRecommendationStrategy implements RecommendationStrategy {
 
-    private static final int VECTOR_SEARCH_LIMIT = 30;
+    private static final int VECTOR_SEARCH_LIMIT = 50;
 
     private final EmbeddingClient embeddingClient;
     private final VectorStoreClient vectorStoreClient;
     private final ContentRepository contentRepository;
 
     @Override
-    public List<Content> recommend(Content content, int limit) {
-        if (content.getPerspectiveStakeholder() == null) {
-            log.warn("[VectorRecommend] stakeholder 미분류 contentId={}", content.getId());
-            return List.of();
-        }
-
+    public List<Content> getCandidates(Content content) {
         String text = "[TITLE]\n%s\n\n[DESCRIPTION]\n%s".formatted(
                 nullSafe(content.getTitle()), nullSafe(content.getDescription()));
 
@@ -44,12 +39,8 @@ public class VectorRecommendationStrategy implements RecommendationStrategy {
             return List.of();
         }
 
-        List<Content> candidates = contentRepository.findAllByVectorIdIn(vectorIds);
-
-        return candidates.stream()
+        return contentRepository.findAllByVectorIdIn(vectorIds).stream()
                 .filter(c -> !Objects.equals(c.getId(), content.getId()))
-                .filter(c -> !Objects.equals(c.getPerspectiveStakeholder(), content.getPerspectiveStakeholder()))
-                .limit(limit)
                 .toList();
     }
 
