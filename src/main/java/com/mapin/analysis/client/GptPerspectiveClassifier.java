@@ -39,7 +39,8 @@ public class GptPerspectiveClassifier implements PerspectiveClassifier {
                 .flatMap(c -> c.message().content())
                 .orElseThrow(() -> new IllegalStateException("GPT 분류 결과가 비어 있습니다."));
 
-        return new PerspectiveAnalysisResult(schema.category, schema.perspectiveLevel, schema.perspectiveStakeholder, schema.keywords);
+        return new PerspectiveAnalysisResult(schema.category, schema.perspectiveLevel, schema.perspectiveStakeholder,
+                schema.keywords, schema.summary, schema.tone, schema.biasLevel, schema.isOpinionated);
     }
 
     private String systemPrompt() {
@@ -50,6 +51,10 @@ public class GptPerspectiveClassifier implements PerspectiveClassifier {
                 perspectiveLevel: 사건(무슨 일), 원인(왜 발생), 구조(시스템 문제) 중 하나
                 perspectiveStakeholder: 정부, 전문가, 시민, 기업, 국제 중 하나
                 keywords: 콘텐츠 핵심 주제를 대표하는 명사 3~5개 (유튜브 검색에 쓸 수 있도록 구체적으로)
+                summary: 콘텐츠 핵심 내용을 1~2문장으로 요약
+                tone: 중립, 비판적, 옹호, 경고, 분석 중 하나
+                biasLevel: 낮음, 중간, 높음 중 하나 (한쪽 관점으로 치우친 정도)
+                isOpinionated: 사실보도이면 false, 의견·논평·주장이면 true
                 """;
     }
 
@@ -72,5 +77,13 @@ public class GptPerspectiveClassifier implements PerspectiveClassifier {
         public String perspectiveStakeholder;
         @JsonPropertyDescription("콘텐츠 핵심 주제를 대표하는 명사 3~5개 (유튜브 검색에 쓸 수 있도록 구체적으로)")
         public List<String> keywords;
+        @JsonPropertyDescription("콘텐츠 핵심 내용을 1~2문장으로 요약")
+        public String summary;
+        @JsonPropertyDescription("중립, 비판적, 옹호, 경고, 분석 중 하나")
+        public String tone;
+        @JsonPropertyDescription("낮음, 중간, 높음 중 하나 (한쪽 관점으로 치우친 정도)")
+        public String biasLevel;
+        @JsonPropertyDescription("사실보도이면 false, 의견·논평·주장이면 true")
+        public boolean isOpinionated;
     }
 }

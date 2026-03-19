@@ -86,6 +86,18 @@ public class Content {
     @Column(name = "keywords", columnDefinition = "jsonb")
     private List<String> keywords;
 
+    @Column(name = "summary", length = 500)
+    private String summary;
+
+    @Column(name = "tone", length = 20)
+    private String tone;
+
+    @Column(name = "bias_level", length = 10)
+    private String biasLevel;
+
+    @Column(name = "is_opinionated")
+    private Boolean isOpinionated;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -137,10 +149,15 @@ public class Content {
         this.vectorId = vectorId;
     }
 
-    public void updatePerspective(String category, String perspectiveLevel, String perspectiveStakeholder, List<String> keywords) {
+    public void updatePerspective(String category, String perspectiveLevel, String perspectiveStakeholder,
+            List<String> keywords, String summary, String tone, String biasLevel, boolean isOpinionated) {
         this.category = category;
         this.perspectiveLevel = perspectiveLevel;
         this.perspectiveStakeholder = perspectiveStakeholder;
         this.keywords = keywords;
+        this.summary = summary;
+        this.tone = tone;
+        this.biasLevel = biasLevel;
+        this.isOpinionated = isOpinionated;
     }
 }
