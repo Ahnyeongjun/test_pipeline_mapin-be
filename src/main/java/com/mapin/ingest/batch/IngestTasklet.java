@@ -6,6 +6,7 @@ import com.mapin.ingest.client.YoutubeMetadataClient;
 import com.mapin.ingest.client.YoutubeUrlParser;
 import com.mapin.ingest.client.YoutubeVideoMetadata;
 import com.mapin.ingest.event.ContentIngestedEvent;
+import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.step.StepContribution;
@@ -33,10 +34,12 @@ public class IngestTasklet implements Tasklet {
         String videoId = youtubeUrlParser.extractVideoId(url);
         String canonicalUrl = youtubeUrlParser.canonicalize(videoId);
 
+        AtomicBoolean isNew = new AtomicBoolean(false);
         Content content = contentRepository.findByCanonicalUrl(canonicalUrl)
-                .orElseGet(() -> saveNew(videoId, canonicalUrl, source));
+                .orElseGet(() -> { isNew.set(true); return saveNew(videoId, canonicalUrl, source); });
 
-        log.info("[Ingest] contentId={} url={} source={}", content.getId(), canonicalUrl, source);
+        log.info("[Ingest] {} contentId={} url={} source={}",
+                isNew.get() ? "NEW" : "EXISTING", content.getId(), canonicalUrl, source);
         eventPublisher.publishEvent(new ContentIngestedEvent(this, content.getId(), source));
         return RepeatStatus.FINISHED;
     }

@@ -5,6 +5,7 @@ import com.mapin.analysis.client.PerspectiveClassifier;
 import com.mapin.analysis.event.ContentAnalyzedEvent;
 import com.mapin.common.domain.Content;
 import com.mapin.common.domain.ContentRepository;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.step.StepContribution;
@@ -32,7 +33,7 @@ public class AnalysisTasklet implements Tasklet {
                 .orElseThrow(() -> new IllegalArgumentException("콘텐츠를 찾을 수 없습니다. id=" + contentId));
 
         String text = "[TITLE]\n%s\n\n[DESCRIPTION]\n%s".formatted(
-                nullSafe(content.getTitle()), nullSafe(content.getDescription()));
+                Objects.toString(content.getTitle(), ""), Objects.toString(content.getDescription(), ""));
 
         PerspectiveAnalysisResult result = perspectiveClassifier.classify(text);
         content.updatePerspective(result.category(), result.perspectiveLevel(), result.perspectiveStakeholder(),
@@ -46,7 +47,4 @@ public class AnalysisTasklet implements Tasklet {
         return RepeatStatus.FINISHED;
     }
 
-    private String nullSafe(String s) {
-        return s == null ? "" : s;
-    }
 }

@@ -33,7 +33,7 @@ public class ContentEmbeddedEventHandler {
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void handle(ContentEmbeddedEvent event) throws Exception {
+    public void handle(ContentEmbeddedEvent event) {
         Long contentId = event.getContentId();
         log.info("[RecommendationHandler] ContentEmbeddedEvent 수신 contentId={} source={}", contentId, event.getSource());
 
@@ -43,6 +43,10 @@ public class ContentEmbeddedEventHandler {
                 .addLong("run.id", System.currentTimeMillis())
                 .toJobParameters();
 
-        jobLauncher.run(recommendationJob, params);
+        try {
+            jobLauncher.run(recommendationJob, params);
+        } catch (Exception e) {
+            log.error("[Recommendation] Job 실행 실패 contentId={}", contentId, e);
+        }
     }
 }

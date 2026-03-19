@@ -9,6 +9,7 @@ import com.mapin.ingest.client.youtube.YoutubeVideoItem;
 import com.mapin.ingest.client.youtube.YoutubeVideosResponse;
 import java.time.OffsetDateTime;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -21,7 +22,13 @@ public class YoutubeMetadataClient {
     private String apiKey;
 
     public YoutubeMetadataClient() {
-        this.restClient = RestClient.create("https://www.googleapis.com/youtube/v3");
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5000);
+        factory.setReadTimeout(10000);
+        this.restClient = RestClient.builder()
+                .requestFactory(factory)
+                .baseUrl("https://www.googleapis.com/youtube/v3")
+                .build();
     }
 
     public YoutubeVideoMetadata fetch(String videoId) {

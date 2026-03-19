@@ -25,7 +25,7 @@ public class ContentIngestedEventHandler {
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void handle(ContentIngestedEvent event) throws Exception {
+    public void handle(ContentIngestedEvent event) {
         Long contentId = event.getContentId();
         log.info("[Analysis] ContentIngestedEvent received. contentId={} source={}", contentId, event.getSource());
 
@@ -35,6 +35,10 @@ public class ContentIngestedEventHandler {
                 .addLong("run.id", System.currentTimeMillis())
                 .toJobParameters();
 
-        jobLauncher.run(analysisJob, params);
+        try {
+            jobLauncher.run(analysisJob, params);
+        } catch (Exception e) {
+            log.error("[Analysis] Job 실행 실패 contentId={}", contentId, e);
+        }
     }
 }

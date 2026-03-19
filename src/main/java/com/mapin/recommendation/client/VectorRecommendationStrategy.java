@@ -30,7 +30,7 @@ public class VectorRecommendationStrategy implements RecommendationStrategy {
     @Override
     public List<Content> getCandidates(Content content) {
         String text = "[TITLE]\n%s\n\n[DESCRIPTION]\n%s".formatted(
-                nullSafe(content.getTitle()), nullSafe(content.getDescription()));
+                Objects.toString(content.getTitle(), ""), Objects.toString(content.getDescription(), ""));
 
         List<Float> queryVector = embeddingClient.embed(text);
         List<String> vectorIds = vectorStoreClient.search(queryVector, VECTOR_SEARCH_LIMIT);
@@ -44,7 +44,4 @@ public class VectorRecommendationStrategy implements RecommendationStrategy {
                 .toList();
     }
 
-    private String nullSafe(String s) {
-        return s == null ? "" : s;
-    }
 }

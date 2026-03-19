@@ -34,7 +34,7 @@ public class ContentAnalyzedEventHandler {
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void handle(ContentAnalyzedEvent event) throws Exception {
+    public void handle(ContentAnalyzedEvent event) {
         Long contentId = event.getContentId();
         log.info("[RecommendationHandler] ContentAnalyzedEvent 수신 contentId={} source={}", contentId, event.getSource());
 
@@ -44,6 +44,10 @@ public class ContentAnalyzedEventHandler {
                 .addLong("run.id", System.currentTimeMillis())
                 .toJobParameters();
 
-        jobLauncher.run(recommendationJob, params);
+        try {
+            jobLauncher.run(recommendationJob, params);
+        } catch (Exception e) {
+            log.error("[Recommendation] Job 실행 실패 contentId={}", contentId, e);
+        }
     }
 }

@@ -6,6 +6,7 @@ import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
@@ -21,7 +22,13 @@ public class YoutubeSearchApiClient implements YoutubeSearchClient {
     private String apiKey;
 
     public YoutubeSearchApiClient() {
-        this.restClient = RestClient.create("https://www.googleapis.com/youtube/v3");
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5000);
+        factory.setReadTimeout(15000);
+        this.restClient = RestClient.builder()
+                .requestFactory(factory)
+                .baseUrl("https://www.googleapis.com/youtube/v3")
+                .build();
     }
 
     @Override

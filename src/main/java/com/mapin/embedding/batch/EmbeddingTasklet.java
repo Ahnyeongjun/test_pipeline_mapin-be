@@ -6,6 +6,7 @@ import com.mapin.embedding.client.EmbeddingClient;
 import com.mapin.embedding.client.VectorStoreClient;
 import com.mapin.embedding.event.ContentEmbeddedEvent;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.step.StepContribution;
@@ -34,7 +35,7 @@ public class EmbeddingTasklet implements Tasklet {
                 .orElseThrow(() -> new IllegalArgumentException("콘텐츠를 찾을 수 없습니다. id=" + contentId));
 
         String text = "[TITLE]\n%s\n\n[DESCRIPTION]\n%s".formatted(
-                nullSafe(content.getTitle()), nullSafe(content.getDescription()));
+                Objects.toString(content.getTitle(), ""), Objects.toString(content.getDescription(), ""));
 
         List<Float> vector = embeddingClient.embed(text);
 
@@ -51,7 +52,4 @@ public class EmbeddingTasklet implements Tasklet {
         return RepeatStatus.FINISHED;
     }
 
-    private String nullSafe(String s) {
-        return s == null ? "" : s;
-    }
 }

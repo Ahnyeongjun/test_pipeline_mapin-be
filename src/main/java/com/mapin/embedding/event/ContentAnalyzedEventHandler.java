@@ -29,7 +29,7 @@ public class ContentAnalyzedEventHandler {
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void handle(ContentAnalyzedEvent event) throws Exception {
+    public void handle(ContentAnalyzedEvent event) {
         Long contentId = event.getContentId();
         log.info("[EmbeddingHandler] ContentAnalyzedEvent 수신 contentId={} source={}", contentId, event.getSource());
 
@@ -39,6 +39,10 @@ public class ContentAnalyzedEventHandler {
                 .addLong("run.id", System.currentTimeMillis())
                 .toJobParameters();
 
-        jobLauncher.run(embeddingJob, params);
+        try {
+            jobLauncher.run(embeddingJob, params);
+        } catch (Exception e) {
+            log.error("[Embedding] Job 실행 실패 contentId={}", contentId, e);
+        }
     }
 }
