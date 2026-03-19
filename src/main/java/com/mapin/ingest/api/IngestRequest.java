@@ -1,4 +1,6 @@
 package com.mapin.ingest.api;
 
-public record IngestRequest(String url) {
+import jakarta.validation.constraints.NotBlank;
+
+public record IngestRequest(@NotBlank(message = "url은 필수입니다.") String url) {
 }

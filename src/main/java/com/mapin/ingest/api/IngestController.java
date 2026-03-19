@@ -1,5 +1,8 @@
 package com.mapin.ingest.api;
 
+import com.mapin.common.domain.ContentRepository;
+import com.mapin.ingest.client.YoutubeUrlParser;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.job.Job;
@@ -24,16 +27,26 @@ public class IngestController {
     @Qualifier("ingestJob")
     private final Job ingestJob;
 
+    private final YoutubeUrlParser youtubeUrlParser;
+    private final ContentRepository contentRepository;
+
     @PostMapping
-    public ResponseEntity<Void> ingest(@RequestBody IngestRequest request) throws Exception {
+    public ResponseEntity<IngestResponse> ingest(@Valid @RequestBody IngestRequest request) throws Exception {
+        String canonicalUrl = youtubeUrlParser.canonicalize(youtubeUrlParser.extractVideoId(request.url()));
+
         JobParameters params = new JobParametersBuilder()
-                .addString("url", request.url())
+                .addString("url", canonicalUrl)
                 .addString("source", "USER")
                 .addLong("run.id", System.currentTimeMillis())
                 .toJobParameters();
 
         jobLauncher.run(ingestJob, params);
-        log.info("[Ingest] Job launched. url={}", request.url());
-        return ResponseEntity.accepted().build();
+        log.info("[Ingest] Job launched. url={}", canonicalUrl);
+
+        Long contentId = contentRepository.findByCanonicalUrl(canonicalUrl)
+                .map(c -> c.getId())
+                .orElse(null);
+
+        return ResponseEntity.accepted().body(new IngestResponse(contentId, canonicalUrl));
     }
 }

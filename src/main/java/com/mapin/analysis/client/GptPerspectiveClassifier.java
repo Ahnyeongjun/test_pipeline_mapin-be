@@ -59,12 +59,7 @@ public class GptPerspectiveClassifier implements PerspectiveClassifier {
     }
 
     private ChatModel toChatModel(String name) {
-        return switch (name) {
-            case "gpt-4.1" -> ChatModel.GPT_4_1;
-            case "gpt-4.1-mini" -> ChatModel.GPT_4_1_MINI;
-            case "gpt-4.1-nano" -> ChatModel.GPT_4_1_NANO;
-            default -> throw new IllegalArgumentException("지원하지 않는 모델: " + name);
-        };
+        return ChatModel.of(name);
     }
 
     @JsonClassDescription("관점 분류 결과")
