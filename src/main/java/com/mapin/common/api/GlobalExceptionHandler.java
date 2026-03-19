@@ -32,4 +32,10 @@ public class GlobalExceptionHandler {
                 .orElse("유효하지 않은 요청입니다.");
         return ResponseEntity.badRequest().body(Map.of("message", message));
     }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, String>> handleUnexpected(Exception ex) {
+        log.error("[API] 예상치 못한 오류 발생", ex);
+        return ResponseEntity.internalServerError().body(Map.of("message", "서버 오류가 발생했습니다."));
+    }
 }
