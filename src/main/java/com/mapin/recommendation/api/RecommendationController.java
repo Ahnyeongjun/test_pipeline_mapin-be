@@ -4,14 +4,19 @@ import com.mapin.common.domain.Content;
 import com.mapin.common.domain.ContentRepository;
 import com.mapin.recommendation.domain.ContentRecommendation;
 import com.mapin.recommendation.domain.ContentRecommendationRepository;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/contents")
@@ -25,7 +30,7 @@ public class RecommendationController {
     @GetMapping("/{id}/recommendations")
     public ResponseEntity<List<RecommendationResponse>> getRecommendations(@PathVariable Long id) {
         contentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("콘텐츠를 찾을 수 없습니다. id=" + id));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "콘텐츠를 찾을 수 없습니다. id=" + id));
 
         List<ContentRecommendation> relations = recommendationRepository
                 .findBySourceContentIdOrderByScoreDesc(id);
@@ -35,18 +40,24 @@ public class RecommendationController {
             return ResponseEntity.ok(List.of());
         }
 
+        Map<Long, Integer> scoreByTargetId = relations.stream()
+                .collect(Collectors.toMap(
+                        ContentRecommendation::getTargetContentId,
+                        ContentRecommendation::getScore));
+
         List<Long> targetIds = relations.stream()
                 .map(ContentRecommendation::getTargetContentId)
                 .toList();
 
         List<RecommendationResponse> result = contentRepository.findAllById(targetIds).stream()
-                .map(this::toResponse)
+                .sorted(Comparator.comparingInt(c -> -scoreByTargetId.getOrDefault(c.getId(), 0)))
+                .map(c -> toResponse(c, scoreByTargetId.getOrDefault(c.getId(), 0)))
                 .toList();
 
         return ResponseEntity.ok(result);
     }
 
-    private RecommendationResponse toResponse(Content c) {
+    private RecommendationResponse toResponse(Content c, int score) {
         return new RecommendationResponse(
                 c.getId(),
                 c.getTitle(),
@@ -54,7 +65,8 @@ public class RecommendationController {
                 c.getCategory(),
                 c.getPerspectiveLevel(),
                 c.getPerspectiveStakeholder(),
-                c.getCanonicalUrl()
+                c.getCanonicalUrl(),
+                score
         );
     }
 }

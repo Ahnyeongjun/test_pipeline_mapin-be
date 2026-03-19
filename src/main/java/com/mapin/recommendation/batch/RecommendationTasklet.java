@@ -7,6 +7,7 @@ import com.mapin.recommendation.client.RecommendationStrategy;
 import com.mapin.recommendation.domain.ContentRecommendation;
 import com.mapin.recommendation.domain.ContentRecommendationRepository;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -87,15 +88,63 @@ public class RecommendationTasklet implements Tasklet {
         RecommendationStrategy strategy = resolveStrategy();
         List<Content> candidates = strategy.getCandidates(content);
 
-        long oppositeCount = candidates.stream().filter(c -> calculateScore(content, c) > 0).count();
+        List<Content> filtered = filterCandidates(content, candidates);
 
-        if (oppositeCount < FALLBACK_THRESHOLD) {
-            log.info("[Recommendation] 반대관점 후보 부족({}개), fallback 실행 contentId={}", oppositeCount, content.getId());
+        if (filtered.size() < FALLBACK_THRESHOLD) {
+            log.info("[Recommendation] 반대관점 후보 부족({}개), fallback 실행 contentId={}", filtered.size(), content.getId());
             tryFallbackSearch(content);
             // fallback ingest는 비동기로 돌기 때문에 이번 요청에서 재시도하지 않음
         }
 
-        return candidates;
+        return filtered;
+    }
+
+    /**
+     * 후보 필터링 및 채널 다양성 보장.
+     * 1. 분석 완료된 콘텐츠만 통과 (perspectiveStakeholder 필수)
+     * 2. 관점 점수 > 0 인 것만 통과
+     * 3. keywords 겹침이 너무 낮으면 (다른 주제) 제외
+     * 4. 같은 채널은 점수 가장 높은 1개만 유지
+     */
+    private List<Content> filterCandidates(Content source, List<Content> candidates) {
+        Map<String, Content> bestByChannel = new LinkedHashMap<>();
+        Map<String, Integer> bestScoreByChannel = new LinkedHashMap<>();
+
+        for (Content target : candidates) {
+            if (target.getPerspectiveStakeholder() == null) continue;
+
+            int score = calculateScore(source, target);
+            if (score == 0) continue;
+            if (!hasTopicOverlap(source, target)) continue;
+
+            // channelTitle이 null이면 content마다 고유 키를 사용해 채널 중복 처리에서 제외
+            String channel = target.getChannelTitle() != null
+                    ? target.getChannelTitle()
+                    : "unknown_" + target.getExternalContentId();
+
+            if (!bestByChannel.containsKey(channel) || score > bestScoreByChannel.get(channel)) {
+                bestByChannel.put(channel, target);
+                bestScoreByChannel.put(channel, score);
+            }
+        }
+
+        return new ArrayList<>(bestByChannel.values());
+    }
+
+    /**
+     * keywords 겹침으로 같은 주제인지 확인.
+     * 둘 중 하나라도 keywords가 없으면 필터링하지 않음.
+     * 겹치는 비율이 20% 미만이면 다른 주제로 판단해 제외.
+     */
+    private boolean hasTopicOverlap(Content a, Content b) {
+        List<String> kA = a.getKeywords();
+        List<String> kB = b.getKeywords();
+        if (kA == null || kA.isEmpty() || kB == null || kB.isEmpty()) {
+            return true;
+        }
+        long overlap = kA.stream().filter(kB::contains).count();
+        double ratio = (double) overlap / Math.min(kA.size(), kB.size());
+        return ratio >= 0.2;
     }
 
     /**
@@ -109,16 +158,18 @@ public class RecommendationTasklet implements Tasklet {
 
         List<ContentRecommendation> toSave = new ArrayList<>();
         for (Content user : userContents) {
+            if (user.getPerspectiveStakeholder() == null) continue;
             int score = calculateScore(user, fallback);
-            if (score > 0 && !recommendationRepository.existsBySourceContentIdAndTargetContentId(
-                    user.getId(), fallback.getId())) {
-                toSave.add(ContentRecommendation.builder()
-                        .sourceContentId(user.getId())
-                        .targetContentId(fallback.getId())
-                        .score(score)
-                        .strategy(strategyName)
-                        .build());
-            }
+            if (score == 0) continue;
+            if (!hasTopicOverlap(user, fallback)) continue;
+            if (recommendationRepository.existsBySourceContentIdAndTargetContentId(user.getId(), fallback.getId())) continue;
+
+            toSave.add(ContentRecommendation.builder()
+                    .sourceContentId(user.getId())
+                    .targetContentId(fallback.getId())
+                    .score(score)
+                    .strategy(strategyName)
+                    .build());
         }
 
         recommendationRepository.saveAll(toSave);
@@ -126,14 +177,14 @@ public class RecommendationTasklet implements Tasklet {
     }
 
     /**
-     * USER 콘텐츠 ↔ 후보 양방향 관계 저장 (score > 0인 것만)
+     * USER 콘텐츠 ↔ 후보 양방향 관계 저장.
+     * filterCandidates()를 거친 후보만 전달받으므로 추가 필터링 없이 저장.
      */
     private void saveRelations(Content source, List<Content> candidates) {
         List<ContentRecommendation> toSave = new ArrayList<>();
 
         for (Content target : candidates) {
             int score = calculateScore(source, target);
-            if (score == 0) continue;
 
             // source → target
             if (!recommendationRepository.existsBySourceContentIdAndTargetContentId(
@@ -165,9 +216,14 @@ public class RecommendationTasklet implements Tasklet {
 
     /**
      * 반대 관점 점수 계산.
-     * 2: 강한 반대관점 (perspectiveLevel + stakeholder 모두 다름)
-     * 1: 약한 반대관점 (stakeholder만 다름)
-     * 0: 같은 관점
+     * 기본 점수 (perspectiveStakeholder/Level 기반):
+     *   0: 같은 stakeholder → 추천 제외
+     *   1: 다른 stakeholder
+     *   2: 다른 stakeholder + 다른 level
+     * 보너스 점수 (analysis 결과 활용):
+     *   +1: tone이 다를 때 (논조 차이)
+     *   +1: isOpinionated가 다를 때 (사실 보도 vs 의견 콘텐츠)
+     * 최대 점수: 4
      */
     private int calculateScore(Content a, Content b) {
         if (Objects.equals(a.getPerspectiveStakeholder(), b.getPerspectiveStakeholder())) {
@@ -175,6 +231,14 @@ public class RecommendationTasklet implements Tasklet {
         }
         int score = 1;
         if (!Objects.equals(a.getPerspectiveLevel(), b.getPerspectiveLevel())) {
+            score += 1;
+        }
+        if (a.getTone() != null && b.getTone() != null
+                && !Objects.equals(a.getTone(), b.getTone())) {
+            score += 1;
+        }
+        if (a.getIsOpinionated() != null && b.getIsOpinionated() != null
+                && !Objects.equals(a.getIsOpinionated(), b.getIsOpinionated())) {
             score += 1;
         }
         return score;
@@ -191,6 +255,13 @@ public class RecommendationTasklet implements Tasklet {
     }
 
     private void tryFallbackSearch(Content content) {
+        if (content.getCategory() != null
+                && contentRepository.existsByCategoryAndSource(content.getCategory(), "FALLBACK")) {
+            log.info("[Recommendation] 동일 카테고리 FALLBACK 이미 존재, 검색 스킵 category={} contentId={}",
+                    content.getCategory(), content.getId());
+            return;
+        }
+
         String query = buildFallbackQuery(content);
         if (query == null) return;
         try {
@@ -203,7 +274,13 @@ public class RecommendationTasklet implements Tasklet {
             log.info("[Recommendation] fallback 검색 결과 query='{}' total={} filtered={}", query, videoIds.size(), filtered.size());
             for (String videoId : filtered) {
                 triggerFallbackIngest(videoId);
-                Thread.sleep(1500); // GPT TPM 한도 초과 방지
+                try {
+                    Thread.sleep(1500); // GPT TPM 한도 초과 방지
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    log.warn("[Recommendation] fallback ingest 인터럽트 발생, 중단 contentId={}", content.getId());
+                    return;
+                }
             }
         } catch (Exception e) {
             log.warn("[Recommendation] fallback 검색 실패: {}", e.getMessage());

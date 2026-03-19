@@ -7,5 +7,6 @@ public record RecommendationResponse(
         String category,
         String perspectiveLevel,
         String perspectiveStakeholder,
-        String canonicalUrl
+        String canonicalUrl,
+        int score
 ) {}
