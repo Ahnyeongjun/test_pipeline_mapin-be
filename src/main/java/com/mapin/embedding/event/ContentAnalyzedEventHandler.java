@@ -7,12 +7,14 @@ import org.springframework.batch.core.job.parameters.JobParameters;
 import org.springframework.batch.core.job.parameters.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 @Component("embeddingContentAnalyzedEventHandler")
+@ConditionalOnProperty(name = "pipeline.recommendation.strategy", havingValue = "vector")
 @Slf4j
 public class ContentAnalyzedEventHandler {
 
