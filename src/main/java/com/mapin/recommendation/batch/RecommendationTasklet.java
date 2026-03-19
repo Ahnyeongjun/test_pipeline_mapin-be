@@ -203,6 +203,7 @@ public class RecommendationTasklet implements Tasklet {
             log.info("[Recommendation] fallback 검색 결과 query='{}' total={} filtered={}", query, videoIds.size(), filtered.size());
             for (String videoId : filtered) {
                 triggerFallbackIngest(videoId);
+                Thread.sleep(1500); // GPT TPM 한도 초과 방지
             }
         } catch (Exception e) {
             log.warn("[Recommendation] fallback 검색 실패: {}", e.getMessage());

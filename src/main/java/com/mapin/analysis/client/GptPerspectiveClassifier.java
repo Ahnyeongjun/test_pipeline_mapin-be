@@ -50,7 +50,7 @@ public class GptPerspectiveClassifier implements PerspectiveClassifier {
                 category: 정치, 경제, 사회, 생활/문화, IT/과학, 세계, 연예, 스포츠 중 하나
                 perspectiveLevel: 사건(무슨 일), 원인(왜 발생), 구조(시스템 문제) 중 하나
                 perspectiveStakeholder: 정부, 전문가, 시민, 기업, 국제 중 하나
-                keywords: 콘텐츠 핵심 주제를 대표하는 명사 3~5개 (유튜브 검색에 쓸 수 있도록 구체적으로)
+                keywords: 같은 주제를 다루는 다른 영상을 찾기 위한 검색어 3~5개. 주제/인물/사건 중심으로 추출. 콘텐츠 형식(리뷰, IMAX, 랭킹 등)은 제외
                 summary: 콘텐츠 핵심 내용을 1~2문장으로 요약
                 tone: 중립, 비판적, 옹호, 경고, 분석 중 하나
                 biasLevel: 낮음, 중간, 높음 중 하나 (한쪽 관점으로 치우친 정도)
@@ -75,7 +75,7 @@ public class GptPerspectiveClassifier implements PerspectiveClassifier {
         public String perspectiveLevel;
         @JsonPropertyDescription("정부, 전문가, 시민, 기업, 국제 중 하나")
         public String perspectiveStakeholder;
-        @JsonPropertyDescription("콘텐츠 핵심 주제를 대표하는 명사 3~5개 (유튜브 검색에 쓸 수 있도록 구체적으로)")
+        @JsonPropertyDescription("같은 주제를 다루는 다른 영상을 찾기 위한 검색어 3~5개. 주제/인물/사건 중심, 콘텐츠 형식(리뷰/IMAX 등) 제외")
         public List<String> keywords;
         @JsonPropertyDescription("콘텐츠 핵심 내용을 1~2문장으로 요약")
         public String summary;
