@@ -12,10 +12,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.job.Job;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.job.parameters.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.step.StepContribution;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.infrastructure.repeat.RepeatStatus;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -25,10 +30,14 @@ public class RecommendationTasklet implements Tasklet {
 
     private static final int FALLBACK_THRESHOLD = 1;
 
+    private static final String YOUTUBE_BASE_URL = "https://www.youtube.com/watch?v=";
+
     private final ContentRepository contentRepository;
     private final ContentRecommendationRepository recommendationRepository;
     private final Map<String, RecommendationStrategy> strategies;
     private final YoutubeSearchClient youtubeSearchClient;
+    private final JobLauncher jobLauncher;
+    private final Job ingestJob;
     private final String strategyName;
 
     public RecommendationTasklet(
@@ -36,11 +45,15 @@ public class RecommendationTasklet implements Tasklet {
             ContentRecommendationRepository recommendationRepository,
             Map<String, RecommendationStrategy> strategies,
             YoutubeSearchClient youtubeSearchClient,
+            JobLauncher jobLauncher,
+            @Qualifier("ingestJob") Job ingestJob,
             @Value("${pipeline.recommendation.strategy:db}") String strategyName) {
         this.contentRepository = contentRepository;
         this.recommendationRepository = recommendationRepository;
         this.strategies = strategies;
         this.youtubeSearchClient = youtubeSearchClient;
+        this.jobLauncher = jobLauncher;
+        this.ingestJob = ingestJob;
         this.strategyName = strategyName;
     }
 
@@ -180,8 +193,26 @@ public class RecommendationTasklet implements Tasklet {
         try {
             List<String> videoIds = youtubeSearchClient.searchVideoIds(query, 10);
             log.info("[Recommendation] fallback 검색 결과 query='{}' count={}", query, videoIds.size());
+            for (String videoId : videoIds) {
+                triggerFallbackIngest(videoId);
+            }
         } catch (Exception e) {
             log.warn("[Recommendation] fallback 검색 실패: {}", e.getMessage());
+        }
+    }
+
+    private void triggerFallbackIngest(String videoId) {
+        String url = YOUTUBE_BASE_URL + videoId;
+        try {
+            JobParameters params = new JobParametersBuilder()
+                    .addString("url", url)
+                    .addString("source", "FALLBACK")
+                    .addLong("run.id", System.currentTimeMillis())
+                    .toJobParameters();
+            jobLauncher.run(ingestJob, params);
+            log.info("[Recommendation] FALLBACK ingest 실행 videoId={}", videoId);
+        } catch (Exception e) {
+            log.warn("[Recommendation] FALLBACK ingest 실패 videoId={}: {}", videoId, e.getMessage());
         }
     }
 
