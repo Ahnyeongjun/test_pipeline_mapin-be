@@ -10,7 +10,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.parameters.JobParameters;
@@ -31,6 +33,7 @@ public class RecommendationTasklet implements Tasklet {
     private static final int FALLBACK_THRESHOLD = 1;
 
     private static final String YOUTUBE_BASE_URL = "https://www.youtube.com/watch?v=";
+
 
     private final ContentRepository contentRepository;
     private final ContentRecommendationRepository recommendationRepository;
@@ -191,9 +194,14 @@ public class RecommendationTasklet implements Tasklet {
         String query = buildFallbackQuery(content);
         if (query == null) return;
         try {
-            List<String> videoIds = youtubeSearchClient.searchVideoIds(query, 10);
-            log.info("[Recommendation] fallback 검색 결과 query='{}' count={}", query, videoIds.size());
-            for (String videoId : videoIds) {
+            List<String> videoIds = youtubeSearchClient.searchVideoIds(query, 50);
+            // 원본 영상 자신 제외
+            Set<String> excluded = Set.of(content.getExternalContentId());
+            List<String> filtered = videoIds.stream()
+                    .filter(id -> !excluded.contains(id))
+                    .toList();
+            log.info("[Recommendation] fallback 검색 결과 query='{}' total={} filtered={}", query, videoIds.size(), filtered.size());
+            for (String videoId : filtered) {
                 triggerFallbackIngest(videoId);
             }
         } catch (Exception e) {
@@ -217,9 +225,9 @@ public class RecommendationTasklet implements Tasklet {
     }
 
     /**
-     * GPT가 추출한 keywords로 YouTube 검색 쿼리 생성.
-     * keywords 없으면 category로 fallback.
-     * ex) ["금리", "한국은행", "통화정책"] → "금리 한국은행 통화정책"
+     * YouTube 검색 쿼리 생성.
+     * 같은 주제 영상을 최대한 넓게 수집 → 반대관점 필터링은 calculateScore에서 수행
+     * ex) keywords=["금리","한국은행","통화정책"] → "금리 한국은행 통화정책"
      */
     private String buildFallbackQuery(Content content) {
         List<String> keywords = content.getKeywords();
