@@ -86,13 +86,13 @@ public class Content {
     @Column(name = "keywords", columnDefinition = "jsonb")
     private List<String> keywords;
 
-    @Column(name = "summary", length = 500)
+    @Column(name = "summary", length = 1000)
     private String summary;
 
-    @Column(name = "tone", length = 20)
+    @Column(name = "tone", length = 50)
     private String tone;
 
-    @Column(name = "bias_level", length = 10)
+    @Column(name = "bias_level", length = 20)
     private String biasLevel;
 
     @Column(name = "is_opinionated")
