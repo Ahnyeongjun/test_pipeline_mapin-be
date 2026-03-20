@@ -5,6 +5,7 @@ import com.mapin.common.domain.ContentRepository;
 import com.mapin.embedding.client.EmbeddingClient;
 import com.mapin.embedding.client.VectorStoreClient;
 import com.mapin.embedding.event.ContentEmbeddedEvent;
+import com.mapin.embedding.event.ContentEmbeddingFailedEvent;
 import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -37,18 +38,29 @@ public class EmbeddingTasklet implements Tasklet {
         String text = "[TITLE]\n%s\n\n[DESCRIPTION]\n%s".formatted(
                 Objects.toString(content.getTitle(), ""), Objects.toString(content.getDescription(), ""));
 
-        List<Float> vector = embeddingClient.embed(text);
+        boolean vectorUpserted = false;
+        try {
+            List<Float> vector = embeddingClient.embed(text);
 
-        // contentId를 Qdrant 포인트 ID로 사용 (조회 시 ID로 역참조 가능)
-        vectorStoreClient.upsert(contentId, vector);
+            // contentId를 Qdrant 포인트 ID로 사용 (조회 시 ID로 역참조 가능)
+            vectorStoreClient.upsert(contentId, vector);
+            vectorUpserted = true;
 
-        content.updateEmbedding(embeddingClient.modelName(), String.valueOf(contentId));
-        contentRepository.save(content);
+            content.updateEmbedding(embeddingClient.modelName(), String.valueOf(contentId));
+            content.updatePipelineStatus("EMBEDDED");
+            contentRepository.save(content);
 
-        log.info("[Embedding] contentId={} model={} dim={}",
-                contentId, embeddingClient.modelName(), vector.size());
+            log.info("[Embedding] contentId={} model={} dim={}",
+                    contentId, embeddingClient.modelName(), vector.size());
 
-        eventPublisher.publishEvent(new ContentEmbeddedEvent(this, contentId, source));
+            eventPublisher.publishEvent(new ContentEmbeddedEvent(this, contentId, source));
+        } catch (Exception e) {
+            log.error("[Embedding][Saga] 임베딩 실패 contentId={} vectorUpserted={}: {}",
+                    contentId, vectorUpserted, e.getMessage(), e);
+            eventPublisher.publishEvent(
+                    new ContentEmbeddingFailedEvent(this, contentId, source, e.getMessage(), vectorUpserted));
+            throw e;
+        }
         return RepeatStatus.FINISHED;
     }
 

@@ -14,6 +14,11 @@ public class MockVectorStoreClient implements VectorStoreClient {
     }
 
     @Override
+    public void delete(long id) {
+        // no-op
+    }
+
+    @Override
     public List<String> search(List<Float> vector, int topK) {
         return List.of();
     }

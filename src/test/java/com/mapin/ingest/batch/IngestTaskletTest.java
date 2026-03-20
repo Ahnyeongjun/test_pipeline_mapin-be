@@ -71,7 +71,6 @@ class IngestTaskletTest {
 
         assertThat(status).isEqualTo(RepeatStatus.FINISHED);
         verify(youtubeMetadataClient, never()).fetch(anyString());
-        verify(contentRepository, never()).save(any());
     }
 
     @Test
@@ -96,7 +95,8 @@ class IngestTaskletTest {
         tasklet.execute(contribution, chunkContext);
 
         verify(youtubeMetadataClient).fetch("newvid");
-        verify(contentRepository).save(any(Content.class));
+        // 1차: 신규 콘텐츠 저장, 2차: pipelineStatus 업데이트
+        verify(contentRepository, times(2)).save(any(Content.class));
     }
 
     @Test

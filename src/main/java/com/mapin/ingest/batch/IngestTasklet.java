@@ -38,6 +38,9 @@ public class IngestTasklet implements Tasklet {
         Content content = contentRepository.findByCanonicalUrl(canonicalUrl)
                 .orElseGet(() -> { isNew.set(true); return saveNew(videoId, canonicalUrl, source); });
 
+        content.updatePipelineStatus("INGESTED");
+        contentRepository.save(content);
+
         log.info("[Ingest] {} contentId={} url={} source={}",
                 isNew.get() ? "NEW" : "EXISTING", content.getId(), canonicalUrl, source);
         eventPublisher.publishEvent(new ContentIngestedEvent(this, content.getId(), source));

@@ -21,6 +21,7 @@ import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.StepContribution;
 import org.springframework.batch.core.step.StepExecution;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Map;
@@ -39,6 +40,7 @@ class RecommendationTaskletTest {
     @Mock private YoutubeSearchClient youtubeSearchClient;
     @Mock private JobLauncher jobLauncher;
     @Mock private Job ingestJob;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @Mock private StepContribution contribution;
     @Mock private StepExecution stepExecution;
@@ -55,7 +57,8 @@ class RecommendationTaskletTest {
                 youtubeSearchClient,
                 jobLauncher,
                 ingestJob,
-                "db"
+                "db",
+                eventPublisher
         );
     }
 

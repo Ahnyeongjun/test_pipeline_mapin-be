@@ -84,6 +84,17 @@ public class QdrantVectorStoreClient implements VectorStoreClient {
     }
 
     @Override
+    public void delete(long id) {
+        Map<String, Object> body = Map.of("points", List.of(id));
+        restClient.post()
+                .uri("/collections/{collection}/points/delete", collection)
+                .body(body)
+                .retrieve()
+                .toBodilessEntity();
+        log.debug("[Qdrant] delete id={}", id);
+    }
+
+    @Override
     public List<String> search(List<Float> vector, int topK) {
         Map<String, Object> body = Map.of(
                 "vector", vector,

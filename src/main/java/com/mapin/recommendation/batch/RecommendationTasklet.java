@@ -6,6 +6,7 @@ import com.mapin.ingest.client.YoutubeSearchClient;
 import com.mapin.recommendation.client.RecommendationStrategy;
 import com.mapin.recommendation.domain.ContentRecommendation;
 import com.mapin.recommendation.domain.ContentRecommendationRepository;
+import com.mapin.recommendation.event.ContentRecommendationFailedEvent;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.parameters.JobParameters;
 import org.springframework.batch.core.job.parameters.JobParametersBuilder;
@@ -43,6 +45,7 @@ public class RecommendationTasklet implements Tasklet {
     private final JobLauncher jobLauncher;
     private final Job ingestJob;
     private final String strategyName;
+    private final ApplicationEventPublisher eventPublisher;
 
     public RecommendationTasklet(
             ContentRepository contentRepository,
@@ -51,7 +54,8 @@ public class RecommendationTasklet implements Tasklet {
             YoutubeSearchClient youtubeSearchClient,
             JobLauncher jobLauncher,
             @Qualifier("ingestJob") Job ingestJob,
-            @Value("${pipeline.recommendation.strategy:db}") String strategyName) {
+            @Value("${pipeline.recommendation.strategy:db}") String strategyName,
+            ApplicationEventPublisher eventPublisher) {
         this.contentRepository = contentRepository;
         this.recommendationRepository = recommendationRepository;
         this.strategies = strategies;
@@ -59,6 +63,7 @@ public class RecommendationTasklet implements Tasklet {
         this.jobLauncher = jobLauncher;
         this.ingestJob = ingestJob;
         this.strategyName = strategyName;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -69,13 +74,23 @@ public class RecommendationTasklet implements Tasklet {
         Content content = contentRepository.findById(contentId)
                 .orElseThrow(() -> new IllegalArgumentException("콘텐츠를 찾을 수 없습니다. id=" + contentId));
 
-        if ("FALLBACK".equals(source)) {
-            // FALLBACK: 기존 USER 콘텐츠 → 신규 FALLBACK 단방향 관계만 추가
-            linkFallbackToExistingUsers(content);
-        } else {
-            // USER: 신규 콘텐츠 ↔ 기존 콘텐츠 양방향 관계 추가
-            List<Content> candidates = getCandidatesWithFallback(content);
-            saveRelations(content, candidates);
+        try {
+            if ("FALLBACK".equals(source)) {
+                // FALLBACK: 기존 USER 콘텐츠 → 신규 FALLBACK 단방향 관계만 추가
+                linkFallbackToExistingUsers(content);
+            } else {
+                // USER: 신규 콘텐츠 ↔ 기존 콘텐츠 양방향 관계 추가
+                List<Content> candidates = getCandidatesWithFallback(content);
+                saveRelations(content, candidates);
+            }
+
+            content.updatePipelineStatus("COMPLETED");
+            contentRepository.save(content);
+        } catch (Exception e) {
+            log.error("[Recommendation][Saga] 추천 실패 contentId={}: {}", contentId, e.getMessage(), e);
+            eventPublisher.publishEvent(
+                    new ContentRecommendationFailedEvent(this, contentId, source, e.getMessage()));
+            throw e;
         }
 
         return RepeatStatus.FINISHED;

@@ -112,6 +112,14 @@ public class Content {
     @Column(name = "source", nullable = false, length = 20)
     private String source;
 
+    /**
+     * 파이프라인 처리 상태 (Saga 상태 머신).
+     * INGESTED → ANALYZED → (EMBEDDED →) COMPLETED
+     * 실패: ANALYSIS_FAILED | EMBEDDING_FAILED | RECOMMENDATION_FAILED
+     */
+    @Column(name = "pipeline_status", length = 30)
+    private String pipelineStatus;
+
     @Builder
     public Content(String canonicalUrl, String platform, String externalContentId,
             String title, String description, String thumbnailUrl, String channelTitle,
@@ -142,6 +150,10 @@ public class Content {
     @PreUpdate
     public void preUpdate() {
         this.updatedAt = OffsetDateTime.now();
+    }
+
+    public void updatePipelineStatus(String pipelineStatus) {
+        this.pipelineStatus = pipelineStatus;
     }
 
     public void updateEmbedding(String embeddingModel, String vectorId) {
