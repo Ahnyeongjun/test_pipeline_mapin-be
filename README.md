@@ -7,26 +7,28 @@
 ## 기술 스택
 
 - Java 21
-- Spring Boot 3
-- Spring Batch
+- Spring Boot 4.0.3
 - Gradle
 - PostgreSQL
 - Qdrant (벡터 DB, `vector` 전략 사용 시)
 - Spring Data JPA
 - Docker Compose
-- OpenAI API (GPT, Embeddings)
+- OpenAI Java SDK 2.19.1 (GPT, Embeddings)
 - YouTube Data API v3
 - springdoc-openapi 2.8.6 (Swagger UI)
 
 ## 아키텍처
 
-패키지는 도메인 기능 단위로 구성되어 있습니다.
+패키지는 레이어와 도메인 단위로 구성되어 있습니다.
 
-- `ingest` — URL 수신, YouTube 메타데이터 수집, `contents` 저장
-- `analysis` — GPT로 관점 분류 (`category`, `perspectiveLevel`, `perspectiveStakeholder`)
-- `embedding` — OpenAI 임베딩 생성 → Qdrant upsert (`vector` 전략 전용)
-- `recommendation` — 반대 관점 콘텐츠 선정 → `content_recommendations` 저장
-- `common` — 도메인 엔티티, 공통 설정 (비동기, OpenAI, Swagger)
+- `api` — REST 컨트롤러 (content, recommendation)
+- `domain` — 도메인 서비스 및 이벤트 핸들러
+  - `content` — URL 수신, YouTube 메타데이터 수집, `contents` 저장
+  - `analysis` — GPT로 관점 분류 (`category`, `perspectiveLevel`, `perspectiveStakeholder`)
+  - `embedding` — OpenAI 임베딩 생성 → Qdrant upsert (`vector` 전략 전용)
+  - `recommendation` — 반대 관점 콘텐츠 선정 → `content_recommendations` 저장
+- `global` — 공통 설정 (비동기, OpenAI, Swagger), 예외 처리
+- `infra` — 외부 연동 클라이언트 (YouTube, OpenAI Embedding, GPT, Qdrant)
 
 ### 처리 흐름
 
@@ -34,13 +36,13 @@
 POST /api/ingest?url=...
         │
         ▼
-   [ingestJob]
+   IngestService
   URL → YouTube 메타데이터 fetch → contents 저장
         │
         └── ContentIngestedEvent 발행
                 │
                 ▼
-          [analysisJob]
+          AnalysisService
         GPT로 관점 분류
         → contents 업데이트
                 │
@@ -50,17 +52,17 @@ POST /api/ingest?url=...
           (db 전략)          (vector 전략)
                 │                    │
                 ▼                    ▼
-       [recommendationJob]     [embeddingJob]
+  RecommendationService        EmbeddingService
                            OpenAI로 텍스트 임베딩
                            → Qdrant upsert
                                     │
                                     └── ContentEmbeddedEvent 발행
                                                 │
                                                 ▼
-                                       [recommendationJob]
+                                     RecommendationService
 ```
 
-모든 Job 간 연결은 `@TransactionalEventListener(AFTER_COMMIT)` + `@Async` 조합으로 처리합니다.
+모든 서비스 간 연결은 `@TransactionalEventListener(AFTER_COMMIT)` + `@Async` 조합으로 처리합니다 (Choreography Saga 패턴).
 
 ### 추천 전략
 
