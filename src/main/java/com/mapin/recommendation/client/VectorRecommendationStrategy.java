@@ -32,16 +32,21 @@ public class VectorRecommendationStrategy implements RecommendationStrategy {
         String text = "[TITLE]\n%s\n\n[DESCRIPTION]\n%s".formatted(
                 Objects.toString(content.getTitle(), ""), Objects.toString(content.getDescription(), ""));
 
-        List<Float> queryVector = embeddingClient.embed(text);
-        List<String> vectorIds = vectorStoreClient.search(queryVector, VECTOR_SEARCH_LIMIT);
+        try {
+            List<Float> queryVector = embeddingClient.embed(text);
+            List<String> vectorIds = vectorStoreClient.search(queryVector, VECTOR_SEARCH_LIMIT);
 
-        if (vectorIds.isEmpty()) {
+            if (vectorIds.isEmpty()) {
+                return List.of();
+            }
+
+            return contentRepository.findAllByVectorIdIn(vectorIds).stream()
+                    .filter(c -> !Objects.equals(c.getId(), content.getId()))
+                    .toList();
+        } catch (Exception e) {
+            log.warn("[VectorRecommend] 벡터 검색 실패 contentId={}: {}", content.getId(), e.getMessage());
             return List.of();
         }
-
-        return contentRepository.findAllByVectorIdIn(vectorIds).stream()
-                .filter(c -> !Objects.equals(c.getId(), content.getId()))
-                .toList();
     }
 
 }

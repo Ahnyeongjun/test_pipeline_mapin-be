@@ -1,6 +1,7 @@
 package com.mapin.common.api;
 
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -28,8 +29,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleValidation(MethodArgumentNotValidException ex) {
         String message = ex.getBindingResult().getFieldErrors().stream()
                 .map(e -> e.getField() + ": " + e.getDefaultMessage())
-                .findFirst()
-                .orElse("유효하지 않은 요청입니다.");
+                .collect(Collectors.joining(", "));
         return ResponseEntity.badRequest().body(Map.of("message", message));
     }
 
