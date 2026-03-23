@@ -40,6 +40,8 @@ public class YoutubeSearchApiClient implements YoutubeSearchClient {
                             .queryParam("q", query)
                             .queryParam("type", "video")
                             .queryParam("maxResults", maxResults)
+                            .queryParam("regionCode", "KR")
+                            .queryParam("relevanceLanguage", "ko")
                             .queryParam("key", apiKey)
                             .build())
                     .retrieve()

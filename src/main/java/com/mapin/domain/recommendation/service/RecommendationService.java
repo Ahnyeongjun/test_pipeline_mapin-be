@@ -219,7 +219,7 @@ public class RecommendationService {
         String query = buildFallbackQuery(content);
         if (query == null) return;
         try {
-            List<String> videoIds = youtubeSearchClient.searchVideoIds(query, 50);
+            List<String> videoIds = youtubeSearchClient.searchVideoIds(query, 10);
             Set<String> excluded = Set.of(content.getExternalContentId());
             List<String> filtered = videoIds.stream()
                     .filter(id -> !excluded.contains(id))
