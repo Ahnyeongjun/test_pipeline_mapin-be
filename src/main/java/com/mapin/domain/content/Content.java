@@ -89,11 +89,12 @@ public class Content {
     @Column(name = "summary", length = 1000)
     private String summary;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "core_keywords", columnDefinition = "jsonb")
+    private List<String> coreKeywords;
+
     @Column(name = "tone", length = 50)
     private String tone;
-
-    @Column(name = "bias_level", length = 20)
-    private String biasLevel;
 
     @Column(name = "is_opinionated")
     private Boolean isOpinionated;
@@ -162,14 +163,14 @@ public class Content {
     }
 
     public void updatePerspective(String category, String perspectiveLevel, String perspectiveStakeholder,
-            List<String> keywords, String summary, String tone, String biasLevel, boolean isOpinionated) {
+            List<String> keywords, List<String> coreKeywords, String summary, String tone, boolean isOpinionated) {
         this.category = category;
         this.perspectiveLevel = perspectiveLevel;
         this.perspectiveStakeholder = perspectiveStakeholder;
         this.keywords = keywords;
+        this.coreKeywords = coreKeywords;
         this.summary = summary;
         this.tone = tone;
-        this.biasLevel = biasLevel;
         this.isOpinionated = isOpinionated;
     }
 }

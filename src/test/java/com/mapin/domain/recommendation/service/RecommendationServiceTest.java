@@ -50,18 +50,23 @@ class RecommendationServiceTest {
     }
 
     private Content buildContent(String stakeholder, String level, String source) {
-        return buildContent(stakeholder, level, source, List.of("정치", "정책"), "채널A");
+        return buildContent(stakeholder, level, source, List.of("정치", "정책"), List.of("정치"), "채널A");
     }
 
     private Content buildContent(String stakeholder, String level, String source,
                                   List<String> keywords, String channelTitle) {
+        return buildContent(stakeholder, level, source, keywords, List.of(keywords.get(0)), channelTitle);
+    }
+
+    private Content buildContent(String stakeholder, String level, String source,
+                                  List<String> keywords, List<String> coreKeywords, String channelTitle) {
         Content content = Content.builder()
                 .canonicalUrl("https://www.youtube.com/watch?v=" + stakeholder)
                 .platform("YOUTUBE").externalContentId("vid_" + stakeholder)
                 .title("영상_" + stakeholder).description("").channelTitle(channelTitle)
                 .status("ACTIVE").source(source).build();
         content.updatePerspective("politics", level, stakeholder,
-                keywords, "요약", "neutral", "low", true);
+                keywords, coreKeywords, "요약", "neutral", true);
         return content;
     }
 
@@ -128,11 +133,11 @@ class RecommendationServiceTest {
         void bonusForDifferentTone() {
             Content source = buildContent("government", "pro", "USER");
             source.updatePerspective("politics", "pro", "government",
-                    List.of("정치", "정책"), "요약", "긍정적", "low", true);
+                    List.of("정치", "정책"), List.of("정치"), "요약", "긍정적", true);
 
             Content target = buildContent("labor", "pro", "USER");
             target.updatePerspective("politics", "pro", "labor",
-                    List.of("정치", "정책"), "요약", "비판적", "low", true);
+                    List.of("정치", "정책"), List.of("정치"), "요약", "비판적", true);
 
             when(contentRepository.findById(1L)).thenReturn(Optional.of(source));
             when(dbStrategy.getCandidates(source)).thenReturn(List.of(target));
@@ -151,11 +156,11 @@ class RecommendationServiceTest {
         void bonusForDifferentIsOpinionated() {
             Content source = buildContent("government", "pro", "USER");
             source.updatePerspective("politics", "pro", "government",
-                    List.of("정치", "정책"), "요약", "neutral", "low", false);
+                    List.of("정치", "정책"), List.of("정치"), "요약", "neutral", false);
 
             Content target = buildContent("labor", "pro", "USER");
             target.updatePerspective("politics", "pro", "labor",
-                    List.of("정치", "정책"), "요약", "neutral", "low", true);
+                    List.of("정치", "정책"), List.of("정치"), "요약", "neutral", true);
 
             when(contentRepository.findById(1L)).thenReturn(Optional.of(source));
             when(dbStrategy.getCandidates(source)).thenReturn(List.of(target));
@@ -199,7 +204,7 @@ class RecommendationServiceTest {
             Content user = buildContent("government", "pro", "USER");
 
             when(contentRepository.findById(2L)).thenReturn(Optional.of(fallback));
-            when(contentRepository.findByCategoryAndSourceAndIdNot(eq("politics"), eq("USER"), any()))
+            when(contentRepository.findByCoreKeywordsOverlapAndSource(anyString(), eq("USER"), any()))
                     .thenReturn(List.of(user));
             when(recommendationRepository.existsBySourceContentIdAndTargetContentId(any(), any()))
                     .thenReturn(false);
@@ -223,7 +228,7 @@ class RecommendationServiceTest {
                     .title("미분류").description("").status("ACTIVE").source("USER").build();
 
             when(contentRepository.findById(2L)).thenReturn(Optional.of(fallback));
-            when(contentRepository.findByCategoryAndSourceAndIdNot(eq("politics"), eq("USER"), any()))
+            when(contentRepository.findByCoreKeywordsOverlapAndSource(anyString(), eq("USER"), any()))
                     .thenReturn(List.of(userNoStakeholder));
             when(contentRepository.save(any())).thenReturn(fallback);
 
@@ -235,8 +240,8 @@ class RecommendationServiceTest {
         }
 
         @Test
-        @DisplayName("FALLBACK: category가 null이면 관계를 맺지 않는다")
-        void skipWhenFallbackCategoryNull() {
+        @DisplayName("FALLBACK: coreKeywords가 null이면 관계를 맺지 않는다")
+        void skipWhenFallbackCoreKeywordsNull() {
             Content fallback = Content.builder()
                     .canonicalUrl("https://www.youtube.com/watch?v=fb")
                     .platform("YOUTUBE").externalContentId("fb")
@@ -265,7 +270,7 @@ class RecommendationServiceTest {
                     .title("채널없음").description("").channelTitle(null)
                     .status("ACTIVE").source("USER").build();
             noChannel.updatePerspective("politics", "con", "labor",
-                    List.of("정치", "정책"), "요약", "neutral", "low", true);
+                    List.of("정치", "정책"), List.of("정치"), "요약", "neutral", true);
 
             when(contentRepository.findById(1L)).thenReturn(Optional.of(source));
             when(dbStrategy.getCandidates(source)).thenReturn(List.of(noChannel));
@@ -299,24 +304,6 @@ class RecommendationServiceTest {
         }
 
         @Test
-        @DisplayName("keywords 겹침이 20% 미만이면 다른 주제로 판단해 제외한다")
-        void excludeLowKeywordOverlapCandidate() {
-            Content source = buildContent("government", "pro", "USER",
-                    List.of("금리", "한국은행", "통화정책", "기준금리", "물가"), "채널A");
-            Content unrelated = buildContent("labor", "con", "USER",
-                    List.of("스포츠", "야구", "올림픽", "축구", "농구"), "채널B");
-
-            when(contentRepository.findById(1L)).thenReturn(Optional.of(source));
-            when(dbStrategy.getCandidates(source)).thenReturn(List.of(unrelated));
-
-            service.recommend(1L, "USER");
-
-            ArgumentCaptor<List<ContentRecommendation>> captor = ArgumentCaptor.forClass(List.class);
-            verify(recommendationRepository).saveAll(captor.capture());
-            assertThat(captor.getValue()).isEmpty();
-        }
-
-        @Test
         @DisplayName("후보의 keywords가 null이면 topic overlap을 true로 처리한다")
         void allowsCandidateWithNullKeywords() {
             Content source = buildContent("government", "pro", "USER",
@@ -327,7 +314,7 @@ class RecommendationServiceTest {
                     .title("키워드없음").description("").channelTitle("채널B")
                     .status("ACTIVE").source("USER").build();
             nullKeywords.updatePerspective("politics", "con", "labor",
-                    null, "요약", "neutral", "low", true);
+                    null, List.of("정치"), "요약", "neutral", true);
 
             when(contentRepository.findById(1L)).thenReturn(Optional.of(source));
             when(dbStrategy.getCandidates(source)).thenReturn(List.of(nullKeywords));
@@ -417,32 +404,32 @@ class RecommendationServiceTest {
 
             when(contentRepository.findById(1L)).thenReturn(Optional.of(source));
             when(dbStrategy.getCandidates(source)).thenReturn(List.of(sameStakeholder));
-            when(youtubeSearchClient.searchVideoIds(anyString(), eq(50))).thenReturn(List.of());
+            when(youtubeSearchClient.searchVideoIds(anyString(), eq(10))).thenReturn(List.of());
 
             service.recommend(1L, "USER");
 
-            verify(youtubeSearchClient).searchVideoIds(anyString(), eq(50));
+            verify(youtubeSearchClient).searchVideoIds(anyString(), eq(10));
         }
 
         @Test
-        @DisplayName("fallback 검색 쿼리는 keywords를 최대 5개 공백으로 조합한다")
-        void fallbackQueryUsesKeywords() {
+        @DisplayName("fallback 검색 쿼리는 coreKeywords를 우선 사용한다")
+        void fallbackQueryUsesCoreKeywords() {
             Content source = buildContent("government", "pro", "USER");
             source.updatePerspective("politics", "pro", "government",
-                    List.of("금리", "한국은행", "통화정책", "기준금리", "물가", "초과"),
-                    "요약", "neutral", "low", true);
+                    List.of("금리", "한국은행", "통화정책", "기준금리", "물가"),
+                    List.of("금리", "한국은행"),
+                    "요약", "neutral", true);
 
             when(contentRepository.findById(1L)).thenReturn(Optional.of(source));
             when(dbStrategy.getCandidates(source)).thenReturn(List.of());
-            when(youtubeSearchClient.searchVideoIds(anyString(), eq(50))).thenReturn(List.of());
+            when(youtubeSearchClient.searchVideoIds(anyString(), eq(10))).thenReturn(List.of());
 
             service.recommend(1L, "USER");
 
             ArgumentCaptor<String> queryCaptor = ArgumentCaptor.forClass(String.class);
-            verify(youtubeSearchClient).searchVideoIds(queryCaptor.capture(), eq(50));
+            verify(youtubeSearchClient).searchVideoIds(queryCaptor.capture(), eq(10));
             String query = queryCaptor.getValue();
-            assertThat(query).contains("금리").contains("한국은행").contains("통화정책");
-            assertThat(query).doesNotContain("초과");
+            assertThat(query).isEqualTo("금리 한국은행");
         }
 
         @Test
@@ -452,7 +439,7 @@ class RecommendationServiceTest {
 
             when(contentRepository.findById(1L)).thenReturn(Optional.of(source));
             when(dbStrategy.getCandidates(source)).thenReturn(List.of());
-            when(youtubeSearchClient.searchVideoIds(anyString(), eq(50)))
+            when(youtubeSearchClient.searchVideoIds(anyString(), eq(10)))
                     .thenReturn(List.of("vid_government")); // 원본 영상 ID만 반환
 
             service.recommend(1L, "USER");
@@ -485,16 +472,16 @@ class RecommendationServiceTest {
                     .title("영상").description("").channelTitle("채널")
                     .status("ACTIVE").source("USER").build();
             source.updatePerspective("economy", "pro", "government",
-                    null, "요약", "neutral", "low", false);
+                    null, null, "요약", "neutral", false);
 
             when(contentRepository.findById(1L)).thenReturn(Optional.of(source));
             when(dbStrategy.getCandidates(source)).thenReturn(List.of());
-            when(youtubeSearchClient.searchVideoIds(anyString(), eq(50))).thenReturn(List.of());
+            when(youtubeSearchClient.searchVideoIds(anyString(), eq(10))).thenReturn(List.of());
 
             service.recommend(1L, "USER");
 
             ArgumentCaptor<String> queryCaptor = ArgumentCaptor.forClass(String.class);
-            verify(youtubeSearchClient).searchVideoIds(queryCaptor.capture(), eq(50));
+            verify(youtubeSearchClient).searchVideoIds(queryCaptor.capture(), eq(10));
             assertThat(queryCaptor.getValue()).isEqualTo("economy");
         }
 
@@ -505,7 +492,7 @@ class RecommendationServiceTest {
 
             when(contentRepository.findById(1L)).thenReturn(Optional.of(source));
             when(dbStrategy.getCandidates(source)).thenReturn(List.of());
-            when(youtubeSearchClient.searchVideoIds(anyString(), eq(50)))
+            when(youtubeSearchClient.searchVideoIds(anyString(), eq(10)))
                     .thenThrow(new RuntimeException("YouTube API 오류"));
             when(contentRepository.save(any())).thenReturn(source);
 
@@ -522,7 +509,7 @@ class RecommendationServiceTest {
 
             when(contentRepository.findById(1L)).thenReturn(Optional.of(source));
             when(dbStrategy.getCandidates(source)).thenReturn(List.of());
-            when(youtubeSearchClient.searchVideoIds(anyString(), eq(50)))
+            when(youtubeSearchClient.searchVideoIds(anyString(), eq(10)))
                     .thenReturn(List.of("vid_other1", "vid_other2"));
 
             service.recommend(1L, "USER");

@@ -29,16 +29,17 @@ class ContentTest {
         content.updatePerspective(
                 "politics", "pro", "government",
                 List.of("금리", "한국은행", "통화정책"),
-                "정부 정책 지지 입장의 영상", "neutral", "low", true
+                List.of("금리", "한국은행"),
+                "정부 정책 지지 입장의 영상", "neutral", true
         );
 
         assertThat(content.getCategory()).isEqualTo("politics");
         assertThat(content.getPerspectiveLevel()).isEqualTo("pro");
         assertThat(content.getPerspectiveStakeholder()).isEqualTo("government");
         assertThat(content.getKeywords()).containsExactly("금리", "한국은행", "통화정책");
+        assertThat(content.getCoreKeywords()).containsExactly("금리", "한국은행");
         assertThat(content.getSummary()).isEqualTo("정부 정책 지지 입장의 영상");
         assertThat(content.getTone()).isEqualTo("neutral");
-        assertThat(content.getBiasLevel()).isEqualTo("low");
         assertThat(content.getIsOpinionated()).isTrue();
     }
 
@@ -69,7 +70,7 @@ class ContentTest {
         Content content = buildContent("USER");
 
         content.updatePerspective("economy", "neutral", "public",
-                List.of("경제"), "중립 영상", "formal", "none", false);
+                List.of("경제"), List.of("경제"), "중립 영상", "formal", false);
 
         assertThat(content.getIsOpinionated()).isFalse();
     }

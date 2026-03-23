@@ -33,7 +33,7 @@ public class AnalysisService {
         try {
             PerspectiveAnalysisResult result = perspectiveClassifier.classify(text);
             content.updatePerspective(result.category(), result.perspectiveLevel(), result.perspectiveStakeholder(),
-                    result.keywords(), result.summary(), result.tone(), result.biasLevel(), result.isOpinionated());
+                    result.keywords(), result.coreKeywords(), result.summary(), result.tone(), result.isOpinionated());
             content.updatePipelineStatus("ANALYZED");
             contentRepository.save(content);
 

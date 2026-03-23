@@ -7,8 +7,8 @@ public record PerspectiveAnalysisResult(
         String perspectiveLevel,
         String perspectiveStakeholder,
         List<String> keywords,
+        List<String> coreKeywords,
         String summary,
         String tone,
-        String biasLevel,
         boolean isOpinionated) {
 }

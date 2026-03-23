@@ -53,7 +53,7 @@ class AnalysisServiceTest {
 
         PerspectiveAnalysisResult result = new PerspectiveAnalysisResult(
                 "politics", "pro", "government",
-                List.of("정치", "정책"), "요약", "neutral", "low", true);
+                List.of("정치", "정책"), List.of("정치"), "요약", "neutral", true);
         when(perspectiveClassifier.classify(anyString())).thenReturn(result);
         when(contentRepository.save(any())).thenReturn(content);
 
@@ -76,7 +76,7 @@ class AnalysisServiceTest {
 
         PerspectiveAnalysisResult result = new PerspectiveAnalysisResult(
                 "economy", "con", "labor",
-                List.of("임금", "고용"), "노동자 입장 영상", "passionate", "medium", true);
+                List.of("임금", "고용"), List.of("임금"), "노동자 입장 영상", "passionate", true);
         when(perspectiveClassifier.classify(anyString())).thenReturn(result);
         when(contentRepository.save(any())).thenReturn(content);
 
@@ -97,7 +97,7 @@ class AnalysisServiceTest {
 
         PerspectiveAnalysisResult result = new PerspectiveAnalysisResult(
                 "politics", "pro", "government",
-                List.of(), "요약", "neutral", "low", false);
+                List.of(), List.of(), "요약", "neutral", false);
         when(perspectiveClassifier.classify(anyString())).thenReturn(result);
         when(contentRepository.save(any())).thenReturn(content);
 

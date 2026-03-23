@@ -35,16 +35,15 @@ class DbRecommendationStrategyTest {
     }
 
     @Test
-    @DisplayName("같은 category의 다른 콘텐츠를 후보로 반환한다")
-    void returnsCandidatesInSameCategory() {
+    @DisplayName("coreKeywords 겹치는 콘텐츠를 후보로 반환한다")
+    void returnsCandidatesWithSharedCoreKeywords() {
         Content source = buildContent("politics");
-        // category 설정 (updatePerspective 통해)
-        source.updatePerspective("politics", null, null, null, null, null, null, false);
+        source.updatePerspective("politics", null, null, null, List.of("정치", "정책"), null, null, false);
 
         Content candidate = buildContent("politics");
-        candidate.updatePerspective("politics", null, null, null, null, null, null, false);
+        candidate.updatePerspective("politics", null, null, null, List.of("정치"), null, null, false);
 
-        when(contentRepository.findByCategoryAndIdNot("politics", source.getId()))
+        when(contentRepository.findByCoreKeywordsOverlap(anyString(), any()))
                 .thenReturn(List.of(candidate));
 
         List<Content> result = strategy.getCandidates(source);
@@ -53,23 +52,23 @@ class DbRecommendationStrategyTest {
     }
 
     @Test
-    @DisplayName("category가 null이면 빈 리스트를 반환한다")
-    void returnsEmptyListWhenCategoryIsNull() {
+    @DisplayName("coreKeywords가 null이면 빈 리스트를 반환한다")
+    void returnsEmptyListWhenCoreKeywordsIsNull() {
         Content source = buildContent(null);
 
         List<Content> result = strategy.getCandidates(source);
 
         assertThat(result).isEmpty();
-        verify(contentRepository, never()).findByCategoryAndIdNot(any(), any());
+        verify(contentRepository, never()).findByCoreKeywordsOverlap(any(), any());
     }
 
     @Test
-    @DisplayName("같은 category의 다른 콘텐츠가 없으면 빈 리스트를 반환한다")
+    @DisplayName("coreKeywords 겹치는 콘텐츠가 없으면 빈 리스트를 반환한다")
     void returnsEmptyListWhenNoCandidates() {
         Content source = buildContent("economy");
-        source.updatePerspective("economy", null, null, null, null, null, null, false);
+        source.updatePerspective("economy", null, null, null, List.of("경제"), null, null, false);
 
-        when(contentRepository.findByCategoryAndIdNot("economy", source.getId()))
+        when(contentRepository.findByCoreKeywordsOverlap(anyString(), any()))
                 .thenReturn(List.of());
 
         List<Content> result = strategy.getCandidates(source);

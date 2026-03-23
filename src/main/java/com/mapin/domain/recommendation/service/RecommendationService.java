@@ -95,7 +95,6 @@ public class RecommendationService {
 
             int score = calculateScore(source, target);
             if (score == 0) continue;
-            if (!hasTopicOverlap(source, target)) continue;
 
             String channel = target.getChannelTitle() != null
                     ? target.getChannelTitle()
@@ -110,29 +109,18 @@ public class RecommendationService {
         return new ArrayList<>(bestByChannel.values());
     }
 
-    private boolean hasTopicOverlap(Content a, Content b) {
-        List<String> kA = a.getKeywords();
-        List<String> kB = b.getKeywords();
-        if (kA == null || kA.isEmpty() || kB == null || kB.isEmpty()) {
-            return true;
-        }
-        long overlap = kA.stream().filter(kB::contains).count();
-        double ratio = (double) overlap / Math.min(kA.size(), kB.size());
-        return ratio >= 0.2;
-    }
-
     private void linkFallbackToExistingUsers(Content fallback) {
-        if (fallback.getCategory() == null) return;
+        List<String> coreKeywords = fallback.getCoreKeywords();
+        if (coreKeywords == null || coreKeywords.isEmpty()) return;
 
-        List<Content> userContents = contentRepository.findByCategoryAndSourceAndIdNot(
-                fallback.getCategory(), "USER", fallback.getId());
+        List<Content> userContents = contentRepository.findByCoreKeywordsOverlapAndSource(
+                toJsonArray(coreKeywords), "USER", fallback.getId());
 
         List<ContentRecommendation> toSave = new ArrayList<>();
         for (Content user : userContents) {
             if (user.getPerspectiveStakeholder() == null) continue;
             int score = calculateScore(user, fallback);
             if (score == 0) continue;
-            if (!hasTopicOverlap(user, fallback)) continue;
             if (recommendationRepository.existsBySourceContentIdAndTargetContentId(user.getId(), fallback.getId())) continue;
 
             toSave.add(ContentRecommendation.builder()
@@ -187,15 +175,21 @@ public class RecommendationService {
         if (!Objects.equals(a.getPerspectiveLevel(), b.getPerspectiveLevel())) {
             score += 1;
         }
-        if (a.getTone() != null && b.getTone() != null
-                && !Objects.equals(a.getTone(), b.getTone())) {
-            score += 1;
-        }
+        score += toneConflictScore(a.getTone(), b.getTone());
         if (a.getIsOpinionated() != null && b.getIsOpinionated() != null
                 && !Objects.equals(a.getIsOpinionated(), b.getIsOpinionated())) {
             score += 1;
         }
         return score;
+    }
+
+    private int toneConflictScore(String toneA, String toneB) {
+        if (toneA == null || toneB == null || toneA.equals(toneB)) return 0;
+        if ((toneA.equals("비판적") && toneB.equals("옹호")) ||
+                (toneA.equals("옹호") && toneB.equals("비판적"))) return 3;
+        if ((toneA.equals("경고") && toneB.equals("옹호")) ||
+                (toneA.equals("옹호") && toneB.equals("경고"))) return 2;
+        return 1;
     }
 
     private RecommendationStrategy resolveStrategy() {
@@ -236,10 +230,20 @@ public class RecommendationService {
     }
 
     private String buildFallbackQuery(Content content) {
+        List<String> core = content.getCoreKeywords();
+        if (core != null && !core.isEmpty()) {
+            return String.join(" ", core);
+        }
         List<String> keywords = content.getKeywords();
         if (keywords != null && !keywords.isEmpty()) {
-            return keywords.stream().limit(5).collect(Collectors.joining(" "));
+            return keywords.stream().limit(3).collect(Collectors.joining(" "));
         }
         return content.getCategory();
+    }
+
+    private static String toJsonArray(List<String> list) {
+        return "[" + list.stream()
+                .map(s -> "\"" + s.replace("\"", "\\\"") + "\"")
+                .collect(Collectors.joining(",")) + "]";
     }
 }

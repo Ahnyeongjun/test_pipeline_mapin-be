@@ -44,7 +44,7 @@ class RecommendationControllerTest {
                 .platform("YOUTUBE").externalContentId("vid" + id)
                 .title(title).description("").status("ACTIVE").source("USER").build();
         content.updatePerspective(category, "pro", stakeholder,
-                List.of(), "요약", "neutral", "low", false);
+                List.of(), List.of(), "요약", "neutral", false);
         try {
             var field = Content.class.getDeclaredField("id");
             field.setAccessible(true);
