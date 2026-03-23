@@ -140,6 +140,7 @@ public class RecommendationService {
 
         for (Content target : candidates) {
             int score = calculateScore(source, target);
+            if (score == 0) continue;
 
             if (!recommendationRepository.existsBySourceContentIdAndTargetContentId(
                     source.getId(), target.getId())) {
@@ -203,7 +204,15 @@ public class RecommendationService {
     }
 
     private void tryFallbackSearch(Content content) {
-        if (content.getCategory() != null
+        List<String> coreKeywords = content.getCoreKeywords();
+        if (coreKeywords != null && !coreKeywords.isEmpty()) {
+            boolean fallbackExists = !contentRepository.findByCoreKeywordsOverlapAndSource(
+                    toJsonArray(coreKeywords), "FALLBACK", content.getId()).isEmpty();
+            if (fallbackExists) {
+                log.info("[Recommendation] 동일 주제 FALLBACK 이미 존재, 검색 스킵 contentId={}", content.getId());
+                return;
+            }
+        } else if (content.getCategory() != null
                 && contentRepository.existsByCategoryAndSource(content.getCategory(), "FALLBACK")) {
             log.info("[Recommendation] 동일 카테고리 FALLBACK 이미 존재, 검색 스킵 category={} contentId={}",
                     content.getCategory(), content.getId());

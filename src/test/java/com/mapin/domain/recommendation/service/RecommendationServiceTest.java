@@ -384,7 +384,8 @@ class RecommendationServiceTest {
             Content source = buildContent("government", "pro", "USER");
             when(contentRepository.findById(1L)).thenReturn(Optional.of(source));
             when(dbStrategy.getCandidates(source)).thenReturn(List.of());
-            when(contentRepository.existsByCategoryAndSource(any(), any())).thenReturn(true);
+            when(contentRepository.findByCoreKeywordsOverlapAndSource(anyString(), eq("FALLBACK"), any()))
+                    .thenReturn(List.of(buildContent("expert", "con", "FALLBACK")));
 
             serviceWithUnknown.recommend(1L, "USER");
 
@@ -449,14 +450,15 @@ class RecommendationServiceTest {
         }
 
         @Test
-        @DisplayName("동일 카테고리 FALLBACK이 이미 존재하면 YouTube 검색을 스킵한다")
+        @DisplayName("동일 주제 FALLBACK이 이미 존재하면 YouTube 검색을 스킵한다")
         void skipFallbackSearchWhenFallbackAlreadyExists() {
             Content source = buildContent("government", "pro", "USER");
+            Content existingFallback = buildContent("expert", "con", "FALLBACK");
 
             when(contentRepository.findById(1L)).thenReturn(Optional.of(source));
             when(dbStrategy.getCandidates(source)).thenReturn(List.of());
-            when(contentRepository.existsByCategoryAndSource("politics", "FALLBACK"))
-                    .thenReturn(true);
+            when(contentRepository.findByCoreKeywordsOverlapAndSource(anyString(), eq("FALLBACK"), any()))
+                    .thenReturn(List.of(existingFallback));
 
             service.recommend(1L, "USER");
 
